@@ -1,7 +1,6 @@
-package menu
+package main
 
 import (
-	"fmt"
 	"github.com/nsf/termbox-go"
 	"unicode/utf8"
 )
@@ -16,6 +15,8 @@ type Menu struct {
 	currentSelection int
 	foreground       termbox.Attribute
 	background       termbox.Attribute
+	keyEventService  chan termbox.Event
+	isFocused        bool
 }
 type MenuItem struct {
 	title string
@@ -29,7 +30,7 @@ func (m *MenuItem) Invoke() error {
 	return nil
 }
 
-var keyInput chan termbox.Event
+var subscribers []chan termbox.Event
 var isListening bool
 
 func (m *Menu) drawTitle() {
@@ -57,16 +58,11 @@ func (m *Menu) drawItems() {
 		}
 		titleIndex := 0
 		title := item.Title()
-		titleStart := 5
-		itemNumber := fmt.Sprintf("%03d", index+1)
-		numIndex := 0
+		titleStart := 3
 		var c rune
 		for x := 0; x < w; x++ {
 			switch {
-			case x >= titleStart && x <= titleStart+3 && numIndex < len(itemNumber):
-				c, _ = utf8.DecodeRuneInString(itemNumber[numIndex:])
-				numIndex++
-			case x > titleStart+4 && titleIndex < len(title):
+			case x > titleStart && titleIndex < len(title):
 				c, _ = utf8.DecodeRuneInString(title[titleIndex:])
 				titleIndex++
 			default:
@@ -114,41 +110,25 @@ func (m *Menu) Down() {
 	}
 }
 func (m *Menu) Select() {
-	m.ignoreKeys()
+	m.isFocused = false
 	m.items[m.currentSelection].Invoke()
-	m.draw()
-	m.ListenToKeys()
-}
-func (m *Menu) listenToKeys() <-chan termbox.Event {
-	if keyInput == nil {
-		keyInput = make(chan termbox.Event)
-
-		go func() {
-			for {
-				select {
-				case keyInput <- termbox.PollEvent():
-					continue
-				default:
-					continue
-				}
-
-			}
-		}()
-	}
-	return keyInput
+	m.isFocused = true
 }
 func (m *Menu) ListenToKeys() {
-	isListening = true
-	keyEventService := m.listenToKeys()
-listenerLoop:
+	m.keyEventService = make(chan termbox.Event)
+	Subscribe(m.keyEventService)
+	m.isFocused = true
+	//defer UnSubscribe(m.keyEventService)
 	for {
 		select {
-		case keyEvent := <-keyEventService:
+		case keyEvent := <-m.keyEventService:
 			switch keyEvent.Type {
 			case termbox.EventKey:
 				switch keyEvent.Key {
 				case termbox.KeyEsc:
-					break listenerLoop
+					if m.isFocused == true {
+						return
+					}
 				case termbox.KeyArrowUp:
 					go func() {
 						m.Up()
@@ -165,19 +145,73 @@ listenerLoop:
 						m.draw()
 					}()
 				}
+
 			case termbox.EventError:
 				panic(keyEvent.Err)
 			}
 		}
 		m.draw()
 	}
-	isListening = false
 
 }
+func (m *Menu) StopListeningToKeys() {
+	UnSubscribe(m.keyEventService)
+	close(m.keyEventService)
+}
+func NewMenu(title string, items []Item) Menu {
+	return Menu{"More Options", items, 0, termbox.ColorWhite, termbox.ColorBlue, nil, false}
+}
+func ListenToKeys() {
+	isListening = true
+	for isListening == true {
+		Emit(termbox.PollEvent())
+	}
 
-func (m *Menu) ignoreKeys() {
+}
+func StopListeningToKeys() {
 	isListening = false
+}
+func Emit(event termbox.Event) {
+	for _, listener := range subscribers {
+		select {
+		case listener <- event:
+			continue
+		default:
+			continue
+		}
+	}
+}
+func Subscribe(listener chan termbox.Event) {
+	if subscribers == nil {
+		subscribers = make([]chan termbox.Event, 1)
+	} else {
+		oneUp := make([]chan termbox.Event, cap(subscribers)+1)
+		for i := range subscribers {
+			oneUp[i] = subscribers[i]
+		}
+		subscribers = oneUp
+	}
+	subscribers[len(subscribers)-1] = listener
+}
 
+func UnSubscribe(listener chan termbox.Event) {
+	if subscribers == nil {
+		return
+	} else {
+		if len(subscribers) == 1 {
+			subscribers = nil
+			return
+		}
+		oneDown := make([]chan termbox.Event, cap(subscribers)-1)
+		for i := range subscribers {
+			if listener == subscribers[i] {
+				continue
+			}
+			oneDown[i] = subscribers[i]
+		}
+		subscribers = oneDown
+	}
+	subscribers[len(subscribers)-1] = listener
 }
 
 var menu1 Menu
@@ -196,8 +230,10 @@ func main() {
 	item4 := &MenuItem{"four"}
 	item5 := &MenuItem{"five"}
 	item6 := &MenuItem{"six"}
-	menu2 = Menu{"More Options", []Item{item4, item5, item6}, 0, termbox.ColorWhite, termbox.ColorRed}
-	menu1 = Menu{"Tour of IPFS", []Item{item1, item2, item3, &menu2}, 0, termbox.ColorWhite, termbox.ColorRed}
+	menu3 := NewMenu("Even More Options", []Item{item4, item1})
+	menu2 = NewMenu("More Options", []Item{item4, item5, item6, &menu3})
+	menu1 = NewMenu("Tour of IPFS", []Item{item1, item2, item3, &menu2})
+	go ListenToKeys()
 	menu1.Invoke()
 
 }
