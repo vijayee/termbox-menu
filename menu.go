@@ -1,4 +1,4 @@
-package main
+package menu
 
 import (
 	"github.com/nsf/termbox-go"
@@ -17,17 +17,6 @@ type Menu struct {
 	background       termbox.Attribute
 	keyEventService  chan termbox.Event
 	isFocused        bool
-}
-type MenuItem struct {
-	title string
-}
-
-func (m *MenuItem) Title() string {
-	return m.title
-}
-func (m *MenuItem) Invoke() error {
-	m.title = "selected"
-	return nil
 }
 
 var subscribers []chan termbox.Event
@@ -118,7 +107,6 @@ func (m *Menu) ListenToKeys() {
 	m.keyEventService = make(chan termbox.Event)
 	Subscribe(m.keyEventService)
 	m.isFocused = true
-	//defer UnSubscribe(m.keyEventService)
 	for {
 		select {
 		case keyEvent := <-m.keyEventService:
@@ -158,7 +146,7 @@ func (m *Menu) StopListeningToKeys() {
 	UnSubscribe(m.keyEventService)
 	close(m.keyEventService)
 }
-func NewMenu(title string, items []Item) Menu {
+func NewMenu(title string, items []Item, foreground termbox.Attribute, background termbox.Attribute) Menu {
 	return Menu{"More Options", items, 0, termbox.ColorWhite, termbox.ColorBlue, nil, false}
 }
 func ListenToKeys() {
@@ -212,28 +200,4 @@ func UnSubscribe(listener chan termbox.Event) {
 		subscribers = oneDown
 	}
 	subscribers[len(subscribers)-1] = listener
-}
-
-var menu1 Menu
-var menu2 Menu
-
-func main() {
-	err := termbox.Init()
-	if err != nil {
-		panic(err)
-	}
-	defer termbox.Close()
-	termbox.SetInputMode(termbox.InputEsc)
-	item1 := &MenuItem{"first"}
-	item2 := &MenuItem{"second"}
-	item3 := &MenuItem{"third"}
-	item4 := &MenuItem{"four"}
-	item5 := &MenuItem{"five"}
-	item6 := &MenuItem{"six"}
-	menu3 := NewMenu("Even More Options", []Item{item4, item1})
-	menu2 = NewMenu("More Options", []Item{item4, item5, item6, &menu3})
-	menu1 = NewMenu("Tour of IPFS", []Item{item1, item2, item3, &menu2})
-	go ListenToKeys()
-	menu1.Invoke()
-
 }
