@@ -147,7 +147,7 @@ func (m *Menu) StopListeningToKeys() {
 	close(m.keyEventService)
 }
 func NewMenu(title string, items []Item, foreground termbox.Attribute, background termbox.Attribute) Menu {
-	return Menu{"More Options", items, 0, termbox.ColorWhite, termbox.ColorBlue, nil, false}
+	return Menu{title, items, 0, foreground, background, nil, false}
 }
 func ListenToKeys() {
 	isListening = true
