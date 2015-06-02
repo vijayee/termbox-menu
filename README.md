@@ -2,7 +2,7 @@
 UI Menu Using termbox
 This library provides very basic terminal menu functionality
 
-![screenshot](https://github.com/vijayee/termbox-menu/screenshots/tourofipfs.png "Tour of IPFs")
+![screenshot](/screenshots/tourofipfs.png?raw=true "Tour of IPFs")
 
 ### To use:
 import the following libraries
