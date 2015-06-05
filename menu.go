@@ -112,33 +112,37 @@ func (m *Menu) ListenToKeys() {
 		case keyEvent := <-m.keyEventService:
 			switch keyEvent.Type {
 			case termbox.EventKey:
-				switch keyEvent.Key {
-				case termbox.KeyEsc:
-					if m.isFocused == true {
-						return
+				if m.isFocused == true {
+					switch keyEvent.Key {
+					case termbox.KeyEsc:
+						if m.isFocused == true {
+							return
+						}
+					case termbox.KeyArrowUp:
+						go func() {
+							m.Up()
+							m.draw()
+						}()
+					case termbox.KeyArrowDown:
+						go func() {
+							m.Down()
+							m.draw()
+						}()
+					case termbox.KeyEnter:
+						go func() {
+							m.Select()
+							m.draw()
+						}()
 					}
-				case termbox.KeyArrowUp:
-					go func() {
-						m.Up()
-						m.draw()
-					}()
-				case termbox.KeyArrowDown:
-					go func() {
-						m.Down()
-						m.draw()
-					}()
-				case termbox.KeyEnter:
-					go func() {
-						m.Select()
-						m.draw()
-					}()
 				}
 
 			case termbox.EventError:
 				panic(keyEvent.Err)
 			}
 		}
-		m.draw()
+		if m.isFocused == true {
+			m.draw()
+		}
 	}
 
 }
