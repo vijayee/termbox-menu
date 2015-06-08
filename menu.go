@@ -28,16 +28,17 @@ func (m *Menu) drawTitle() {
 	titleRow := 2
 	titleIndex := 0
 	for x := 0; x < w; x++ {
-		if x > titleStart && titleIndex < len(m.title) {
-			c, _ := utf8.DecodeRuneInString(m.title[titleIndex:])
-			titleIndex++
+		if x >= titleStart && titleIndex < len(m.title) {
+			c, rw := utf8.DecodeRuneInString(m.title[titleIndex:])
+			titleIndex += rw
+			titleStart += rw
 			termbox.SetCell(x, titleRow, c, m.foreground, m.background)
-			c = '_'
 		}
 		termbox.SetCell(x, titleRow+1, '_', m.foreground, m.background)
 	}
 
 }
+
 func (m *Menu) drawItems() {
 	w, h := termbox.Size()
 	currrentRow := 5
@@ -49,11 +50,13 @@ func (m *Menu) drawItems() {
 		title := item.Title()
 		titleStart := 3
 		var c rune
+		var rw int
 		for x := 0; x < w; x++ {
 			switch {
-			case x > titleStart && titleIndex < len(title):
-				c, _ = utf8.DecodeRuneInString(title[titleIndex:])
-				titleIndex++
+			case x >= titleStart && titleIndex < len(title):
+				c, rw = utf8.DecodeRuneInString(title[titleIndex:])
+				titleIndex += rw
+				titleStart += rw
 			default:
 				c = ' '
 
@@ -61,7 +64,6 @@ func (m *Menu) drawItems() {
 			if m.currentSelection == index {
 				termbox.SetCell(x, currrentRow, c, m.background, m.foreground)
 			} else {
-
 				termbox.SetCell(x, currrentRow, c, m.foreground, m.background)
 			}
 		}
@@ -119,20 +121,26 @@ func (m *Menu) ListenToKeys() {
 							return
 						}
 					case termbox.KeyArrowUp:
-						go func() {
-							m.Up()
-							m.draw()
-						}()
+						if m.isFocused == true {
+							go func() {
+								m.Up()
+								m.draw()
+							}()
+						}
 					case termbox.KeyArrowDown:
-						go func() {
-							m.Down()
-							m.draw()
-						}()
+						if m.isFocused == true {
+							go func() {
+								m.Down()
+								m.draw()
+							}()
+						}
 					case termbox.KeyEnter:
-						go func() {
-							m.Select()
-							m.draw()
-						}()
+						if m.isFocused == true {
+							go func() {
+								m.Select()
+								m.draw()
+							}()
+						}
 					}
 				}
 
