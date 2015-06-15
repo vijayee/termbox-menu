@@ -1,6 +1,7 @@
 package menu
 
 import (
+	//+"fmt"
 	"github.com/nsf/termbox-go"
 	"unicode/utf8"
 )
@@ -17,6 +18,8 @@ type Menu struct {
 	background       termbox.Attribute
 	keyEventService  chan termbox.Event
 	isFocused        bool
+	displayStart     int
+	displayEnd       int
 }
 
 var subscribers []chan termbox.Event
@@ -42,8 +45,14 @@ func (m *Menu) drawTitle() {
 func (m *Menu) drawItems() {
 	w, h := termbox.Size()
 	currrentRow := 5
-	for index, item := range m.items {
+	if m.displayEnd == 0 {
+		m.displayEnd = len(m.items) - 1
+	}
+	var index int
+	for index = m.displayStart; index < len(m.items); index++ {
+		item := m.items[index]
 		if currrentRow > h {
+
 			break
 		}
 		titleIndex := 0
@@ -59,8 +68,8 @@ func (m *Menu) drawItems() {
 				titleStart += rw
 			default:
 				c = ' '
-
 			}
+
 			if m.currentSelection == index {
 				termbox.SetCell(x, currrentRow, c, m.background, m.foreground)
 			} else {
@@ -68,7 +77,26 @@ func (m *Menu) drawItems() {
 			}
 		}
 		currrentRow += 2
+		if m.displayEnd < len(m.items)-1 {
+			a, _ := utf8.DecodeRuneInString("\u25BC")
+			if m.currentSelection == m.displayEnd {
+				termbox.SetCell(w-1, h-1, a, m.foreground, m.background)
+			} else {
+				termbox.SetCell(w-1, h-1, a, m.background, m.foreground)
+			}
+
+		}
+		if m.displayStart > 0 {
+			a, _ := utf8.DecodeRuneInString("\u25B2")
+			if m.currentSelection == m.displayStart {
+				termbox.SetCell(w-1, 4, a, m.foreground, m.background)
+			} else {
+				termbox.SetCell(w-1, 4, a, m.background, m.foreground)
+			}
+
+		}
 	}
+	m.displayEnd = index - 1
 
 }
 func (m *Menu) draw() error {
@@ -92,13 +120,20 @@ func (m *Menu) Up() {
 	if m.currentSelection < 0 {
 		m.currentSelection = 0
 	}
+	if m.currentSelection == m.displayStart && m.currentSelection != 0 {
+		m.displayStart--
+	}
 }
 
 func (m *Menu) Down() {
 	m.currentSelection++
+	if m.currentSelection >= m.displayEnd && m.currentSelection < len(m.items) {
+		m.displayStart++
+	}
 	if m.currentSelection >= len(m.items) {
 		m.currentSelection = len(m.items) - 1
 	}
+
 }
 func (m *Menu) Select() {
 	m.isFocused = false
@@ -159,7 +194,7 @@ func (m *Menu) StopListeningToKeys() {
 	close(m.keyEventService)
 }
 func NewMenu(title string, items []Item, foreground termbox.Attribute, background termbox.Attribute) Menu {
-	return Menu{title, items, 0, foreground, background, nil, false}
+	return Menu{title, items, 0, foreground, background, nil, false, 0, 0}
 }
 func ListenToKeys() {
 	isListening = true
