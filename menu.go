@@ -30,6 +30,10 @@ func (m *Menu) drawTitle() {
 	titleStart := (w / 2) - (len(m.title) / 2)
 	titleRow := 2
 	titleIndex := 0
+	instructions := "ESC: Back"
+	for i, c := range instructions {
+		termbox.SetCell(i, 0, c, m.foreground, m.background)
+	}
 	for x := 0; x < w; x++ {
 		if x >= titleStart && titleIndex < len(m.title) {
 			c, rw := utf8.DecodeRuneInString(m.title[titleIndex:])
@@ -140,6 +144,11 @@ func (m *Menu) Select() {
 	m.items[m.currentSelection].Invoke()
 	m.isFocused = true
 }
+func (m *Menu) SelectByID(index int) {
+	m.currentSelection = index
+	m.Select()
+}
+
 func (m *Menu) ListenToKeys() {
 	m.keyEventService = make(chan termbox.Event)
 	Subscribe(m.keyEventService)
